@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODDBALL | Pro Terminal</title>
+    
+    <!-- TYPOGRAPHY -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- DESIGN TOKENS --- */
+        :root {
+            --bg: #050505;
+            --panel: #0A0A0A;
+            --border: #222;
+            --border-light: #333;
+            
+            --acid: #D4FF00;
+            --acid-dim: rgba(212, 255, 0, 0.1);
+            --cyan: #00F0FF;
+            --magenta: #FF0055;
+            
+            --text-main: #E1E1E1;
+            --text-muted: #777;
+            
+            --font-serif: 'Instrument Serif', serif;
+            --font-mono: 'Space Mono', monospace;
+            --font-ui: 'Inter', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            font-size: 13px;
+            overflow-x: hidden;
+        }
+
+        /* --- LAYOUT --- */
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px; /* Fixed Sidebar Width */
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 30px 40px 30px;
+            min-height: 100vh;
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 30px; height: 60px; border-bottom: 1px solid var(--border);
+            background: rgba(5,5,5,0.95); position: sticky; top: 0; z-index: 100;
+        }
+        
+        .brand { font-family: var(--font-serif); font-size: 1.2rem; font-style: italic; letter-spacing: -0.5px; margin-right: 30px; }
+        .nav-links { display: flex; gap: 20px; }
+        .nav-item { color: var(--text-muted); text-decoration: none; font-weight: 500; transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { color: var(--text-main); }
+        .nav-right { display: flex; gap: 15px; align-items: center; font-family: var(--font-mono); }
+        .cash-display { color: var(--acid); }
+        .user-avatar { width: 24px; height: 24px; background: #222; border-radius: 50%; border: 1px solid var(--border); }
+
+        /* --- LEFT COLUMN --- */
+        .left-col { padding-top: 20px; }
+
+        .breadcrumbs { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px; }
+        
+        .market-header-row { display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-start; }
+        .market-icon { 
+            width: 48px; height: 48px; background: #111; border: 1px solid var(--border);
+            display: grid; place-items: center; font-size: 1.5rem; flex-shrink: 0; border-radius: 4px;
+        }
+        
+        .market-title h1 {
+            font-family: var(--font-serif); font-size: 2rem; line-height: 1.1; font-weight: 400;
+            margin-bottom: 8px; letter-spacing: -0.02em;
+        }
+        
+        .market-meta { display: flex; gap: 20px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+        .meta-val { color: var(--text-main); margin-left: 4px; }
+
+        /* CHART */
+        .chart-section { margin-bottom: 30px; border: 1px solid var(--border); background: var(--panel); padding: 15px; }
+        
+        .chart-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
+        .chart-stats { display: flex; align-items: baseline; gap: 10px; }
+        .prob-big { font-family: var(--font-serif); font-size: 3rem; line-height: 1; color: var(--acid); }
+        .prob-delta { font-family: var(--font-mono); color: var(--magenta); font-size: 11px; }
+
+        .time-filters { display: flex; gap: 4px; }
+        .time-btn {
+            background: transparent; border: 1px solid transparent; color: var(--text-muted);
+            font-family: var(--font-mono); font-size: 10px; padding: 4px 8px; cursor: pointer;
+        }
+        .time-btn.active { background: var(--border); color: var(--text-main); border-radius: 2px; }
+        
+        .chart-container { height: 280px; width: 100%; position: relative; margin-bottom: 10px; }
+        .chart-svg { width: 100%; height: 100%; }
+        .chart-line { fill: none; stroke: var(--acid); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+
+        /* TABS */
+        .tab-bar { border-bottom: 1px solid var(--border); display: flex; gap: 30px; margin-bottom: 20px; }
+        .tab {
+            padding: 10px 0; font-family: var(--font-ui); font-size: 13px; cursor: pointer; font-weight: 500;
+            color: var(--text-muted); position: relative;
+        }
+        .tab.active { color: var(--text-main); }
+        .tab.active::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--acid);
+        }
+
+        /* ORDER BOOK TABLE */
+        .order-book-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; margin-bottom: 40px; }
+        .order-book-table th { text-align: left; color: var(--text-muted); font-weight: 400; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; }
+        .order-book-table td { padding: 8px 0; border-bottom: 1px solid #111; color: var(--text-main); }
+        .col-right { text-align: right; }
+        .price-yes { color: var(--acid); }
+        .price-no { color: var(--magenta); }
+
+        /* --- COMMENTS SECTION --- */
+        .comments-section { padding-top: 20px; border-top: 1px dashed var(--border); }
+        .comments-header { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .comment-input-box { display: flex; gap: 15px; margin-bottom: 30px; }
+        .c-avatar-small { width: 32px; height: 32px; background: #111; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
+        .c-input { 
+            flex: 1; background: var(--panel); border: 1px solid var(--border); color: #fff; 
+            padding: 10px; font-family: var(--font-ui); font-size: 13px; outline: none;
+        }
+        .c-input:focus { border-color: var(--text-muted); }
+        .c-post-btn { 
+            background: var(--border); color: var(--text-main); border: none; padding: 0 20px; 
+            font-family: var(--font-mono); font-size: 11px; cursor: pointer; text-transform: uppercase;
+        }
+        .c-post-btn:hover { background: var(--acid); color: #000; }
+
+        .comment-item { display: flex; gap: 15px; margin-bottom: 25px; }
+        .c-avatar { width: 32px; height: 32px; background: #222; border-radius: 50%; flex-shrink: 0; border: 1px solid var(--border); }
+        
+        /* Gradient Avatars for Flair */
+        .av-1 { background: linear-gradient(135deg, var(--magenta), #000); }
+        .av-2 { background: linear-gradient(135deg, var(--acid), #000); }
+        .av-3 { background: linear-gradient(135deg, var(--cyan), #000); }
+
+        .c-content { flex: 1; }
+        .c-meta { display: flex; gap: 10px; align-items: baseline; margin-bottom: 4px; }
+        .c-user { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--text-main); }
+        .c-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+        .c-text { font-size: 13px; line-height: 1.5; color: var(--text-main); margin-bottom: 8px; }
+        .c-actions { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); cursor: pointer; }
+        .c-actions span:hover { color: var(--acid); text-decoration: underline; }
+
+        /* --- RIGHT COLUMN (SIDEBAR) --- */
+        .trading-sidebar {
+            position: sticky; top: 80px;
+            background: var(--panel); border: 1px solid var(--border);
+            padding: 20px;
+        }
+
+        .trade-switcher {
+            display: flex; background: #000; padding: 2px; border-radius: 4px; margin-bottom: 15px; border: 1px solid var(--border);
+        }
+        .switch-opt { flex: 1; text-align: center; padding: 6px; font-family: var(--font-ui); font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-muted); }
+        .switch-opt.active { background: var(--border); color: #fff; border-radius: 2px; }
+
+        .outcome-row { display: flex; gap: 8px; margin-bottom: 15px; }
+        .outcome-card {
+            flex: 1; border: 1px solid var(--border); padding: 10px 12px; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: 0.1s; background: #050505; height: 48px;
+        }
+        .outcome-card span:first-child { font-family: var(--font-mono); font-weight: 700; font-size: 13px; }
+        .outcome-card span:last-child { font-family: var(--font-mono); font-size: 12px; }
+        
+        .outcome-card.yes.active { border-color: var(--acid); background: var(--acid-dim); color: var(--acid); }
+        .outcome-card.no { border-color: var(--border); color: var(--text-muted); }
+        .outcome-card.no:hover { border-color: var(--magenta); color: var(--text-main); }
+
+        .input-area { margin-bottom: 15px; }
+        .input-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
+        
+        .money-input {
+            width: 100%; background: #000; border: 1px solid var(--border); color: #fff;
+            font-family: var(--font-mono); font-size: 1.2rem; padding: 10px; text-align: right; outline: none;
+        }
+        .money-input:focus { border-color: var(--acid); }
+
+        .presets { display: flex; gap: 4px; margin-top: 6px; }
+        .preset-btn { 
+            flex: 1; background: var(--border); border: none; color: var(--text-muted); font-family: var(--font-mono); 
+            font-size: 10px; padding: 4px; cursor: pointer; 
+        }
+        .preset-btn:hover { background: #444; color: #fff; }
+
+        .trade-details {
+            margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 10px;
+        }
+        .detail-row { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; margin-bottom: 6px; }
+        .val-highlight { color: var(--acid); }
+
+        .main-cta {
+            width: 100%; margin-top: 20px; padding: 14px;
+            background: var(--acid); border: none; color: #000;
+            font-family: var(--font-ui); font-weight: 700; font-size: 13px;
+            text-transform: uppercase; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .main-cta:hover { background: #bfff00; transform: translateY(-1px); }
+
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div style="display: flex; align-items: center;">
+            <div class="brand">ODDBALL.</div>
+            <div class="nav-links">
+                <a href="#" class="nav-item active">Markets</a>
+                <a href="#" class="nav-item">Activity</a>
+                <a href="#" class="nav-item">Leaderboard</a>
+            </div>
+        </div>
+        <div class="nav-right">
+            <span class="cash-display">$20.38</span>
+            <div class="user-avatar"></div>
+        </div>
+    </nav>
+
+    <!-- MAIN GRID -->
+    <div class="layout-grid">
+
+        <!-- LEFT: MARKET INFO -->
+        <div class="left-col">
+            <div class="breadcrumbs">
+                Home / Geopolitics / Conflict / <span>2025</span>
+            </div>
+
+            <!-- Header -->
+            <div class="market-header-row">
+                <div class="market-icon">🇷🇺</div>
+                <div>
+                    <div class="market-title">
+                        <h1>Russia x Ukraine ceasefire in 2025?</h1>
+                    </div>
+                    <div class="market-meta">
+                        <span>Vol: <span class="meta-val">$29.8M</span></span>
+                        <span>Ends: <span class="meta-val">Dec 31, 2025</span></span>
+                        <span>Oracle: <span class="meta-val">UMA</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Module -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <div class="chart-stats">
+                        <div class="prob-big">8%</div>
+                        <div class="prob-delta">▼ 56%</div>
+                    </div>
+                    <div class="time-filters">
+                        <button class="time-btn">1H</button>
+                        <button class="time-btn">1D</button>
+                        <button class="time-btn">1W</button>
+                        <button class="time-btn">1M</button>
+                        <button class="time-btn active">ALL</button>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <svg class="chart-svg" viewBox="0 0 1000 300" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--acid);stop-opacity:0.1" />
+                                <stop offset="100%" style="stop-color:var(--acid);stop-opacity:0" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M0,100 L50,120 L100,90 L150,150 L200,140 L300,200 L400,180 L500,250 L600,230 L700,300 L800,310 L900,350 L1000,340 L1000,400 L0,400 Z" fill="url(#grad1)" />
+                        <path class="chart-line" d="M0,100 L50,120 L100,90 L150,150 L200,140 L300,200 L400,180 L500,250 L600,230 L700,300 L800,310 L900,350 L1000,340" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="tab-bar">
+                <div class="tab active">Order Book</div>
+                <div class="tab">Market Context</div>
+                <div class="tab">History</div>
+                <div class="tab">Related</div>
+            </div>
+
+            <table class="order-book-table">
+                <thead>
+                    <tr>
+                        <th>Outcome</th>
+                        <th class="col-right">Price</th>
+                        <th class="col-right">Depth (USDC)</th>
+                        <th class="col-right">Spread</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="price-yes">YES</td>
+                        <td class="col-right">8.1¢</td>
+                        <td class="col-right">$142,000</td>
+                        <td class="col-right">0.1%</td>
+                    </tr>
+                    <tr>
+                        <td class="price-yes">YES</td>
+                        <td class="col-right">8.0¢</td>
+                        <td class="col-right">$45,500</td>
+                        <td class="col-right">-</td>
+                    </tr>
+                    <tr>
+                        <td class="price-yes">YES</td>
+                        <td class="col-right">7.9¢</td>
+                        <td class="col-right">$12,250</td>
+                        <td class="col-right">-</td>
+                    </tr>
+                    <tr>
+                        <td class="price-no">NO</td>
+                        <td class="col-right">93.0¢</td>
+                        <td class="col-right">$89,200</td>
+                        <td class="col-right">0.1%</td>
+                    </tr>
+                    <tr>
+                        <td class="price-no">NO</td>
+                        <td class="col-right">93.2¢</td>
+                        <td class="col-right">$12,000</td>
+                        <td class="col-right">-</td>
+                    </tr>
+                     <tr>
+                        <td class="price-no">NO</td>
+                        <td class="col-right">93.5¢</td>
+                        <td class="col-right">$5,000</td>
+                        <td class="col-right">-</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- COMMENTS SECTION -->
+            <div class="comments-section">
+                <div class="comments-header">
+                    <span>Comments (12)</span>
+                    <span style="color:var(--acid); cursor:pointer;">Newest ▼</span>
+                </div>
+            
+                <!-- Input -->
+                <div class="comment-input-box">
+                    <div class="c-avatar-small"></div>
+                    <input type="text" placeholder="Add a comment..." class="c-input">
+                    <button class="c-post-btn">Post</button>
+                </div>
+            
+                <!-- List -->
+                <div class="comment-list">
+                    <!-- Item 1 -->
+                    <div class="comment-item">
+                        <div class="c-avatar av-1"></div>
+                        <div class="c-content">
+                            <div class="c-meta">
+                                <span class="c-user">DeepF**kValue</span>
+                                <span class="c-time">2m ago</span>
+                            </div>
+                            <div class="c-text">
+                                Volume is spiking. Something is leaking about the negotiations in Turkey. Buying YES.
+                            </div>
+                            <div class="c-actions">
+                                <span>Reply</span> • <span>Like (4)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Item 2 -->
+                    <div class="comment-item">
+                        <div class="c-avatar av-2"></div>
+                        <div class="c-content">
+                            <div class="c-meta">
+                                <span class="c-user">Satoshi_Nakamoto</span>
+                                <span class="c-time">15m ago</span>
+                            </div>
+                            <div class="c-text">
+                                No chance. Winter offensive is just starting. This goes to 2026 easily.
+                            </div>
+                            <div class="c-actions">
+                                <span>Reply</span> • <span>Like (12)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Item 3 -->
+                     <div class="comment-item">
+                        <div class="c-avatar av-3"></div>
+                        <div class="c-content">
+                            <div class="c-meta">
+                                <span class="c-user">Vitalik_B</span>
+                                <span class="c-time">2h ago</span>
+                            </div>
+                            <div class="c-text">
+                                The oracle resolution criteria is key here. "Signed by authorized reps" excludes informal ceasefires. Read the rules carefully.
+                            </div>
+                            <div class="c-actions">
+                                <span>Reply</span> • <span>Like (45)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT: TRADING TERMINAL -->
+        <div class="right-col">
+            <div class="trading-sidebar">
+                <div class="trade-switcher">
+                    <div class="switch-opt active">Buy</div>
+                    <div class="switch-opt">Sell</div>
+                </div>
+
+                <div class="outcome-row">
+                    <div class="outcome-card yes active">
+                        <span>YES</span>
+                        <span>8¢</span>
+                    </div>
+                    <div class="outcome-card no">
+                        <span>NO</span>
+                        <span>93¢</span>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="input-label">
+                        <span>Amount</span>
+                        <span>Bal: $20.38</span>
+                    </div>
+                    <input type="text" class="money-input" placeholder="0.00" value="100">
+                    <div class="presets">
+                        <button class="preset-btn">10</button>
+                        <button class="preset-btn">100</button>
+                        <button class="preset-btn">500</button>
+                        <button class="preset-btn">Max</button>
+                    </div>
+                </div>
+
+                <div class="trade-details">
+                    <div class="detail-row">
+                        <span style="color: var(--text-muted)">Avg Price</span>
+                        <span>8.1¢</span>
+                    </div>
+                    <div class="detail-row">
+                        <span style="color: var(--text-muted)">Shares</span>
+                        <span>1,234.5</span>
+                    </div>
+                    <div class="detail-row">
+                        <span style="color: var(--text-muted)">Potential Return</span>
+                        <span class="val-highlight">$1,234.50 (1,150%)</span>
+                    </div>
+                </div>
+
+                <button class="main-cta">Buy Yes</button>
+
+                <div style="text-align: center; font-size: 10px; color: var(--text-muted); margin-top: 12px; font-family: var(--font-mono);">
+                    Est. Network Fee: 0.00 USDC
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
