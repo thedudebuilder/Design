@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODDBALL | The Feed</title>
+    
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #050505;
+            --modal-bg: #0A0A0A;
+            --border: #222;
+            --acid: #D4FF00;
+            --acid-dim: rgba(212, 255, 0, 0.1);
+            --cyan: #00F0FF;
+            --magenta: #FF0055;
+            --text-main: #EAEAEA;
+            --text-muted: #888;
+            
+            --font-serif: 'Instrument Serif', serif;
+            --font-mono: 'Space Mono', monospace;
+            --font-ui: 'Inter', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            height: 100vh;
+            overflow: hidden;
+            
+            /* TECHNICAL GRID BACKGROUND */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
+        }
+
+        /* --- 1. NAVBAR --- */
+        .navbar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; border-bottom: 1px solid var(--border);
+            background: rgba(5,5,5,0.95); z-index: 1000;
+        }
+        .brand { font-family: var(--font-serif); font-size: 1.5rem; font-style: italic; letter-spacing: -1px; }
+        .nav-center { display: flex; gap: 30px; }
+        .nav-link { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); cursor: pointer; text-transform: uppercase; }
+        .nav-link.active { color: var(--acid); font-weight: 700; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .balance { font-family: var(--font-mono); font-size: 12px; color: var(--acid); }
+        .avatar-circle { width: 30px; height: 30px; background: #222; border-radius: 50%; border: 1px solid var(--border); }
+
+        /* --- 2. CATEGORY TAG BAR (NEW) --- */
+        .tag-bar {
+            position: fixed; top: 60px; left: 0; width: 100%; height: 60px;
+            display: flex; align-items: center; gap: 12px;
+            padding: 0 40px; border-bottom: 1px solid var(--border);
+            background: rgba(5,5,5,0.9); z-index: 900;
+            overflow-x: auto; white-space: nowrap;
+            /* Hide Scrollbar */
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .tag-bar::-webkit-scrollbar { display: none; }
+
+        .nav-chip {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 18px; border-radius: 100px;
+            font-family: var(--font-mono); font-size: 12px; cursor: pointer;
+            border: 1px solid var(--border); color: var(--text-muted);
+            transition: all 0.2s; background: rgba(255,255,255,0.03);
+        }
+        .nav-chip:hover { border-color: var(--text-main); color: var(--text-main); }
+        
+        /* Active State (The Yellow One) */
+        .nav-chip.active {
+            background: var(--acid); color: #000; border-color: var(--acid); font-weight: 700;
+        }
+        /* Icons inside chips */
+        .chip-icon { font-size: 14px; line-height: 1; }
+
+        /* --- 3. MAIN LAYOUT WRAPPER --- */
+        .layout-wrapper {
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh;
+            padding-top: 120px; /* 60px Nav + 60px Tag Bar */
+            width: 100%;
+        }
+
+        /* --- 4. THEATER MODAL --- */
+        .theater-modal {
+            width: 1100px; max-width: 85vw;
+            height: 75vh; max-height: 800px; /* Adjusted height to fit with new bar */
+            background: var(--modal-bg); border: 1px solid var(--border);
+            border-radius: 4px;
+            box-shadow: 0 0 0 1px #111, 0 40px 100px rgba(0,0,0,1);
+            display: grid; grid-template-columns: 1fr 380px;
+            position: relative; z-index: 10; overflow: hidden;
+        }
+
+        /* --- LEFT COL: SCROLLABLE FEED --- */
+        .feed-view {
+            position: relative; background: #000; border-right: 1px solid var(--border);
+            height: 100%; overflow: hidden;
+        }
+        .feed-scroller {
+            height: 100%; width: 100%; overflow-y: scroll; scroll-snap-type: y mandatory;
+            scroll-behavior: smooth; scrollbar-width: none;
+        }
+        .feed-scroller::-webkit-scrollbar { display: none; }
+        .market-slide {
+            height: 100%; width: 100%; scroll-snap-align: start; position: relative; display: flex;
+        }
+
+        /* Visuals */
+        .market-visual { width: 100%; height: 100%; position: absolute; inset: 0; }
+        .bg-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; transition: transform 10s ease; }
+        .market-slide:hover .bg-img { transform: scale(1.05); }
+        .gradient-overlay { position: absolute; inset: 0; background: linear-gradient(to top, #000 15%, rgba(0,0,0,0.2) 60%, rgba(0,0,0,0.5) 100%); }
+
+        /* Market Info */
+        .market-info-layer {
+            position: absolute; bottom: 0; left: 0; width: 100%; padding: 40px; z-index: 2;
+            display: flex; flex-direction: column; justify-content: flex-end;
+        }
+        .tag-row { margin-bottom: 15px; }
+        .tag { 
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;
+            font-family: var(--font-mono); font-size: 10px; padding: 4px 8px; border-radius: 4px;
+            text-transform: uppercase; backdrop-filter: blur(5px);
+        }
+        .market-question {
+            font-family: var(--font-serif); font-size: 3rem; line-height: 1; color: #fff;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8); margin-bottom: 10px; max-width: 90%;
+        }
+        .market-stats { display: flex; gap: 20px; font-family: var(--font-mono); font-size: 11px; color: #ccc; margin-bottom: 20px; }
+        .stat-val { color: #fff; font-weight: 700; }
+
+        /* Odds */
+        .chance-container { margin-bottom: 20px; }
+        .chance-label { font-family: var(--font-mono); font-size: 10px; color: var(--acid); text-transform: uppercase; letter-spacing: 1px; margin-bottom: -5px; display: block; }
+        .chance-value {
+            font-family: var(--font-serif); font-size: 5.5rem; line-height: 1; color: var(--acid);
+            text-shadow: 0 0 30px rgba(212, 255, 0, 0.4); font-style: italic;
+        }
+
+        /* Buttons */
+        .bet-interface { display: flex; gap: 10px; width: 100%; }
+        .bet-btn {
+            flex: 1; height: 60px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff;
+            font-family: var(--font-mono); font-size: 1.2rem; display: flex; justify-content: space-between;
+            align-items: center; padding: 0 20px; cursor: pointer; transition: 0.2s;
+        }
+        .bet-btn span:last-child { font-size: 0.8rem; opacity: 0.6; }
+        .bet-btn.yes:hover { background: var(--acid); color: #000; border-color: var(--acid); }
+        .bet-btn.no:hover { background: var(--magenta); color: #fff; border-color: var(--magenta); }
+
+        /* Social */
+        .social-actions { position: absolute; right: 20px; bottom: 200px; display: flex; flex-direction: column; gap: 15px; z-index: 5; }
+        .s-btn {
+            width: 44px; height: 44px; border-radius: 50%; background: rgba(20,20,20,0.8);
+            border: 1px solid rgba(255,255,255,0.15); display: grid; place-items: center; color: #fff;
+            cursor: pointer; transition: 0.2s;
+        }
+        .s-btn:hover { transform: scale(1.1); border-color: var(--acid); color: var(--acid); }
+        .s-count { font-family: var(--font-mono); font-size: 10px; text-align: center; margin-top: 2px; text-shadow: 0 2px 4px #000; }
+
+        /* --- RIGHT COL: CHAT --- */
+        .chat-column { background: var(--modal-bg); display: flex; flex-direction: column; height: 100%; }
+        .chat-header { height: 50px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #0E0E0E; }
+        .chat-title { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; }
+        .chat-status { font-family: var(--font-mono); font-size: 10px; color: var(--acid); display: flex; align-items: center; gap: 6px; }
+        .live-dot { width: 6px; height: 6px; background: var(--acid); border-radius: 50%; animation: blink 1s infinite; }
+
+        .comment-scroller { flex: 1; overflow-y: auto; padding: 0 20px; }
+        .comment-scroller::-webkit-scrollbar { width: 4px; }
+        .comment-scroller::-webkit-scrollbar-thumb { background: #333; }
+        .comment-row { padding: 15px 0; border-bottom: 1px dashed #222; }
+        .cm-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .cm-user { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--cyan); }
+        .cm-bet { font-family: var(--font-mono); font-size: 9px; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 2px; color: #aaa; }
+        .cm-body { font-size: 13px; color: #ddd; line-height: 1.4; margin-bottom: 6px; }
+        .cm-footer { font-family: var(--font-mono); font-size: 10px; color: #555; display: flex; gap: 10px; }
+        .cm-act:hover { color: var(--acid); cursor: pointer; }
+
+        .chat-input-area { border-top: 1px solid var(--border); padding: 20px; background: #0E0E0E; }
+        .chat-input-wrapper { display: flex; gap: 8px; }
+        .chat-field { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 10px; font-family: var(--font-ui); font-size: 12px; outline: none; border-radius: 4px; }
+        .chat-field:focus { border-color: var(--acid); }
+        .send-btn { background: var(--text-main); color: #000; border: none; padding: 0 15px; font-family: var(--font-mono); font-weight: 700; font-size: 11px; cursor: pointer; border-radius: 4px; }
+
+        /* --- NAV ARROWS --- */
+        .nav-arrow {
+            position: absolute; width: 40px; height: 40px; background: var(--bg);
+            border: 1px solid var(--border); border-radius: 50%; display: grid; place-items: center;
+            cursor: pointer; color: #888; transition: 0.2s; z-index: 20;
+        }
+        .nav-arrow:hover { border-color: var(--acid); color: var(--acid); }
+        .layout-arrow {
+            position: absolute; right: calc(50% - 620px); width: 50px; height: 50px;
+            border: 1px solid var(--border); background: #000; border-radius: 50%; color: #fff;
+            display: grid; place-items: center; cursor: pointer; font-size: 18px; z-index: 100; transition: 0.2s;
+        }
+        .layout-arrow:hover { border-color: var(--acid); color: var(--acid); }
+        .l-up { top: 45%; }
+        .l-down { top: 60%; }
+
+        @keyframes blink { 50% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="brand">ODDBALL.</div>
+        <div class="nav-center">
+            <div class="nav-link active">Feed</div>
+            <div class="nav-link">Markets</div>
+            <div class="nav-link">Leaderboard</div>
+        </div>
+        <div class="nav-right">
+            <span class="balance">$420.00</span>
+            <div class="avatar-circle"></div>
+        </div>
+    </nav>
+
+    <!-- CATEGORY TAG BAR -->
+    <div class="tag-bar">
+        <div class="nav-chip active">
+            <span class="chip-icon">🔥</span> Trending
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">🇺🇸</span> US Politics
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">👾</span> Crypto
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">👽</span> Aliens
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">🥊</span> Influencer Boxing
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">🤖</span> AI Safety
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">🎬</span> Pop Culture
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">🌍</span> Global Conflict
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">🧪</span> Science
+        </div>
+        <div class="nav-chip">
+            <span class="chip-icon">🌧️</span> Climate
+        </div>
+    </div>
+
+    <!-- MAIN WRAPPER -->
+    <div class="layout-wrapper">
+        
+        <!-- External Controls -->
+        <div class="layout-arrow l-up" onclick="scrollFeed(-1)">↑</div>
+        <div class="layout-arrow l-down" onclick="scrollFeed(1)">↓</div>
+
+        <!-- THEATER MODAL -->
+        <div class="theater-modal">
+            
+            <!-- LEFT: SCROLLABLE MARKET FEED -->
+            <div class="feed-view">
+                <div class="feed-scroller" id="feedScroller">
+                    
+                    <!-- SLIDE 1: TRUMP -->
+                    <section class="market-slide">
+                        <div class="market-visual">
+                            <img src="https://images.unsplash.com/photo-1580129993787-0a8695e073bc?q=80&w=2070&auto=format&fit=crop" class="bg-img">
+                            <div class="gradient-overlay"></div>
+                        </div>
+
+                        <div class="social-actions">
+                            <div style="text-align: center;"><div class="s-btn">♥</div><div class="s-count">24.5k</div></div>
+                            <div style="text-align: center;"><div class="s-btn">💬</div><div class="s-count">892</div></div>
+                            <div style="text-align: center;"><div class="s-btn">↗</div><div class="s-count">Share</div></div>
+                        </div>
+
+                        <div class="market-info-layer">
+                            <div class="tag-row"><span class="tag">Politics / Space</span></div>
+                            <h1 class="market-question">Is Trump going to find aliens?</h1>
+                            <div class="market-stats">
+                                <div>Volume: <span class="stat-val">$30,000,000</span></div>
+                                <div>Ends: <span class="stat-val">Dec 2025</span></div>
+                            </div>
+                            
+                            <!-- BIG CHANCE DISPLAY -->
+                            <div class="chance-container">
+                                <span class="chance-label">Current Odds</span>
+                                <div class="chance-value">12%</div>
+                            </div>
+
+                            <div class="bet-interface">
+                                <button class="bet-btn yes">YES <span>12¢</span></button>
+                                <button class="bet-btn no">NO <span>88¢</span></button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- SLIDE 2: CRYPTO -->
+                    <section class="market-slide">
+                        <div class="market-visual">
+                            <img src="https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=2555&auto=format&fit=crop" class="bg-img" style="filter: hue-rotate(40deg) contrast(1.2);">
+                            <div class="gradient-overlay"></div>
+                        </div>
+
+                        <div class="social-actions">
+                            <div style="text-align: center;"><div class="s-btn">♥</div><div class="s-count">45k</div></div>
+                            <div style="text-align: center;"><div class="s-btn">💬</div><div class="s-count">3.2k</div></div>
+                            <div style="text-align: center;"><div class="s-btn">↗</div></div>
+                        </div>
+
+                        <div class="market-info-layer">
+                            <div class="tag-row"><span class="tag">Crypto</span></div>
+                            <h1 class="market-question">Will Bitcoin hit $100k in Q1?</h1>
+                            <div class="market-stats">
+                                <div>Volume: <span class="stat-val">$142.5M</span></div>
+                                <div>Ends: <span class="stat-val">Mar 31</span></div>
+                            </div>
+
+                            <div class="chance-container">
+                                <span class="chance-label">Current Odds</span>
+                                <div class="chance-value">45%</div>
+                            </div>
+
+                            <div class="bet-interface">
+                                <button class="bet-btn yes">YES <span>45¢</span></button>
+                                <button class="bet-btn no">NO <span>55¢</span></button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- SLIDE 3: GAMING -->
+                    <section class="market-slide">
+                        <div class="market-visual">
+                            <img src="https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=1000&auto=format&fit=crop" class="bg-img" style="filter: hue-rotate(240deg) contrast(1.5);">
+                            <div class="gradient-overlay"></div>
+                        </div>
+
+                        <div class="social-actions">
+                            <div style="text-align: center;"><div class="s-btn">♥</div><div class="s-count">12k</div></div>
+                            <div style="text-align: center;"><div class="s-btn">💬</div><div class="s-count">400</div></div>
+                            <div style="text-align: center;"><div class="s-btn">↗</div></div>
+                        </div>
+
+                        <div class="market-info-layer">
+                            <div class="tag-row"><span class="tag">Gaming</span></div>
+                            <h1 class="market-question">GTA VI delayed to 2026?</h1>
+                            <div class="market-stats">
+                                <div>Volume: <span class="stat-val">$8.2M</span></div>
+                                <div>Ends: <span class="stat-val">Dec 2025</span></div>
+                            </div>
+
+                            <div class="chance-container">
+                                <span class="chance-label">Current Odds</span>
+                                <div class="chance-value" style="color: var(--magenta); text-shadow: 0 0 30px rgba(255, 0, 85, 0.4);">32%</div>
+                            </div>
+
+                            <div class="bet-interface">
+                                <button class="bet-btn yes">YES <span>32¢</span></button>
+                                <button class="bet-btn no">NO <span>68¢</span></button>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+
+            <!-- RIGHT: CHAT -->
+            <div class="chat-column">
+                <div class="chat-header">
+                    <span class="chat-title">Discussion</span>
+                    <div class="chat-status"><div class="live-dot"></div> Live</div>
+                </div>
+                <div class="comment-scroller">
+                    <!-- Comment 1 -->
+                    <div class="comment-row">
+                        <div class="cm-header"><span class="cm-user">@Fox_Mulder</span><span class="cm-bet">BOUGHT YES</span></div>
+                        <div class="cm-body">The timing of the declassification bill matches. It's happening.</div>
+                        <div class="cm-footer"><span>2m ago</span><span class="cm-act">Reply</span><span class="cm-act">♥ 42</span></div>
+                    </div>
+                    <!-- Comment 2 -->
+                    <div class="comment-row">
+                        <div class="cm-header"><span class="cm-user">@Skeptic_AI</span><span class="cm-bet">BOUGHT NO</span></div>
+                        <div class="cm-body">Pure distraction. Betting NO at 88 cents is free alpha.</div>
+                        <div class="cm-footer"><span>5m ago</span><span class="cm-act">Reply</span><span class="cm-act">♥ 12</span></div>
+                    </div>
+                    <!-- Comment 3 -->
+                    <div class="comment-row">
+                        <div class="cm-header"><span class="cm-user">@Doge_Whale</span></div>
+                        <div class="cm-body">Just aped 50 SOL. If aliens are real, money doesn't matter anyway.</div>
+                        <div class="cm-footer"><span>12m ago</span><span class="cm-act">Reply</span><span class="cm-act">♥ 156</span></div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <input type="text" class="chat-field" placeholder="Add a comment...">
+                        <button class="send-btn">POST</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Scroll Logic for Arrows
+        const scroller = document.getElementById('feedScroller');
+        
+        function scrollFeed(direction) {
+            const height = scroller.clientHeight;
+            scroller.scrollBy({
+                top: height * direction,
+                behavior: 'smooth'
+            });
+        }
+    </script>
+
+</body>
+</html>
