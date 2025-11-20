@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODDBALL | The 1-Bit Prediction Protocol</title>
+    
+    <!-- TYPOGRAPHY -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 0. DESIGN TOKENS --- */
+        :root {
+            --void: #050505;
+            --acid: #D4FF00;      /* Acid Green */
+            --cyan: #00F0FF;
+            --magenta: #FF0055;
+            --concrete: #1a1a1a;
+            --text: #EAEAEA;
+            
+            --font-display: 'Instrument Serif', serif;
+            --font-code: 'Space Mono', monospace;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html {
+            -webkit-font-smoothing: antialiased;
+            background: var(--void);
+        }
+
+        body {
+            color: var(--text);
+            font-family: var(--font-body);
+            overflow-x: hidden;
+        }
+
+        /* --- 1. CANVAS LAYER (Background) --- */
+        #canvas-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* --- 2. HOLOGRAPHIC LABELS (For the Scales) --- */
+        .holo-label {
+            position: fixed;
+            font-family: var(--font-code);
+            font-size: 0.7rem;
+            font-weight: 700;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.2s;
+            text-shadow: 2px 2px 0px #000;
+            background: var(--void);
+            padding: 4px 8px;
+            border: 1px solid #333;
+            white-space: nowrap;
+        }
+        .label-yes { color: var(--cyan); border-color: var(--cyan); box-shadow: 4px 4px 0 rgba(0, 240, 255, 0.1); }
+        .label-no { color: var(--magenta); border-color: var(--magenta); box-shadow: 4px 4px 0 rgba(255, 0, 85, 0.1); }
+
+        /* --- 3. UI WRAPPER --- */
+        .main-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+        }
+
+        /* --- 4. NAVIGATION --- */
+        nav {
+            position: fixed;
+            top: 0; width: 100%;
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            mix-blend-mode: exclusion;
+            z-index: 100;
+        }
+
+        .brand { font-family: var(--font-display); font-size: 2rem; font-style: italic; letter-spacing: -1px; }
+        .nav-btn { 
+            font-family: var(--font-code); 
+            font-size: 0.8rem; 
+            text-transform: uppercase; 
+            border: 1px solid var(--text);
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            color: var(--text);
+            transition: 0.3s;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .nav-btn:hover { background: var(--acid); color: var(--void); border-color: var(--acid); }
+
+        /* --- 5. HERO SECTION --- */
+        .section-hero {
+            height: 100vh;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr; /* Text Left, 3D Right */
+            align-items: center;
+            padding: 0 4rem;
+            position: relative;
+        }
+
+        .hero-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            text-align: left;
+            z-index: 2;
+        }
+
+        .hero-title {
+            font-family: var(--font-display);
+            font-size: clamp(5rem, 11vw, 11rem);
+            line-height: 0.85;
+            font-weight: 400;
+            letter-spacing: -0.03em;
+            text-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .hero-tag-wrapper {
+            margin-top: 3rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .hero-tag {
+            font-family: var(--font-code);
+            color: var(--void);
+            background: var(--acid);
+            padding: 8px 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        
+        .hero-sub {
+            font-family: var(--font-body);
+            color: #888;
+            max-width: 300px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* --- 6. TICKER SECTION --- */
+        .section-ticker {
+            background: var(--acid);
+            padding: 1.2rem 0;
+            overflow: hidden;
+            white-space: nowrap;
+            border-top: 1px solid var(--void);
+            border-bottom: 1px solid var(--void);
+            position: relative;
+            z-index: 20;
+            transform: rotate(-1deg) scale(1.01);
+        }
+
+        .ticker-content {
+            display: inline-block;
+            font-family: var(--font-code);
+            color: var(--void);
+            font-weight: 700;
+            font-size: 1.8rem;
+            animation: scroll 20s linear infinite;
+        }
+        @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+        /* --- 7. MANIFESTO --- */
+        .section-manifesto {
+            padding: 12rem 10vw;
+            position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .manifesto-text {
+            font-family: var(--font-display);
+            font-size: clamp(2.5rem, 5vw, 5rem);
+            line-height: 1.1;
+            max-width: 1400px;
+        }
+        
+        .highlight { 
+            font-family: var(--font-code); 
+            font-size: 0.5em; 
+            color: var(--acid);
+            vertical-align: middle;
+            border: 1px solid var(--acid);
+            padding: 2px 12px;
+            border-radius: 100px;
+            position: relative;
+            top: -5px;
+        }
+
+        /* --- 8. TIKTOK FEED DEMO --- */
+        .section-demo {
+            padding: 10rem 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1200px;
+        }
+
+        .demo-container {
+            display: flex;
+            gap: 8rem;
+            align-items: center;
+            width: 85%;
+            max-width: 1400px;
+        }
+
+        .demo-copy { flex: 1; }
+        .demo-copy h2 { font-family: var(--font-display); font-size: 5rem; line-height: 0.9; margin-bottom: 2rem; }
+        .demo-copy p { font-family: var(--font-body); color: #888; font-size: 1.2rem; line-height: 1.6; margin-bottom: 3rem; max-width: 500px; }
+
+        /* Phone CSS3D */
+        .phone-mockup {
+            width: 380px; height: 750px;
+            background: #000;
+            border: 4px solid #222;
+            border-radius: 50px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+            transform: rotateY(-15deg) rotateX(5deg);
+            transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .phone-mockup:hover { transform: rotateY(0) rotateX(0) scale(1.02); border-color: var(--acid); }
+
+        /* Feed Animation */
+        .feed-track {
+            width: 100%;
+            animation: feedScroll 12s ease-in-out infinite;
+        }
+        @keyframes feedScroll {
+            0%, 20% { transform: translateY(0); }
+            25%, 45% { transform: translateY(-750px); } 
+            50%, 70% { transform: translateY(-1500px); } 
+            75%, 95% { transform: translateY(-2250px); } 
+            100% { transform: translateY(-3000px); }
+        }
+
+        .feed-card {
+            width: 100%; height: 750px;
+            position: relative;
+            background: #111;
+            border-bottom: 1px solid #333;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        
+        .card-bg {
+            position: absolute; inset: 0; opacity: 0.2;
+            background-image: radial-gradient(circle, #555 1px, transparent 1px);
+            background-size: 3px 3px;
+        }
+
+        .bet-tag { background: var(--acid); color: #000; font-size: 0.7rem; font-weight: 800; padding: 6px 10px; width: fit-content; margin-bottom: 1.5rem; }
+        .bet-q { font-family: var(--font-display); font-size: 2.2rem; line-height: 1.05; margin-bottom: 1.5rem; }
+        .bet-btns { display: flex; gap: 10px; }
+        .btn-vote { flex: 1; padding: 18px; border: 1px solid #333; color: #666; text-align: center; font-weight: bold; font-size: 0.9rem; cursor: pointer; transition:0.2s;}
+        .btn-vote:hover { background: #222; color: #fff; }
+        .btn-vote.green { border-color: var(--acid); color: var(--acid); }
+
+        /* --- 9. HALL OF FLESH (Leaderboard) --- */
+        .section-leaderboard {
+            padding: 8rem 10vw;
+        }
+
+        .lb-header { font-family: var(--font-code); color: var(--acid); margin-bottom: 3rem; display: block; font-size: 0.9rem; letter-spacing: 1px;}
+        
+        .lb-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .player-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--concrete);
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            transition: 0.3s;
+        }
+        .player-card:hover { border-color: var(--acid); transform: translateY(-5px); background: rgba(212, 255, 0, 0.02); }
+
+        /* CSS Filter for Avatars */
+        .avatar {
+            width: 80px; height: 80px;
+            background: #333;
+            border-radius: 50%;
+            filter: url(#dither-filter-2d);
+        }
+        .av-1 { background: linear-gradient(45deg, #ff0055, #000); }
+        .av-2 { background: linear-gradient(135deg, #00ff88, #000); }
+        .av-3 { background: radial-gradient(circle, #7F00FF, #000); }
+
+        .player-stats h4 { font-family: var(--font-code); font-size: 1rem; margin-bottom: 0.5rem; color: #888; }
+        .profit { font-family: var(--font-display); font-size: 2.5rem; color: var(--text); }
+
+        /* --- 10. FOOTER --- */
+        footer {
+            padding: 5rem 2rem;
+            border-top: 1px solid var(--concrete);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer-brand {
+            font-family: var(--font-display);
+            font-size: 18vw;
+            line-height: 0.8;
+            color: var(--void);
+            -webkit-text-stroke: 1px var(--text);
+            opacity: 0.5;
+        }
+
+        /* --- MEDIA QUERIES --- */
+        @media (max-width: 900px) {
+            .section-hero { 
+                grid-template-columns: 1fr; 
+                text-align: center; 
+                padding-top: 10vh;
+            }
+            .hero-content { 
+                align-items: center; 
+                text-align: center; 
+            }
+            .hero-title { font-size: 16vw; }
+            .demo-container { flex-direction: column; gap: 4rem;}
+            .demo-copy { text-align: center; }
+            .demo-copy p { margin: 0 auto 2rem auto; }
+            .phone-mockup { transform: rotate(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SVG FILTERS FOR 2D ELEMENTS (Avatars) -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <filter id="dither-filter-2d">
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="1"/>
+            <feColorMatrix type="matrix" values="0 0 0 9 -4 0 0 0 9 -4 0 0 0 9 -4 0 0 0 0 1"/>
+            <feComposite operator="in" in2="SourceGraphic"/>
+        </filter>
+    </svg>
+
+    <!-- 3D BACKGROUND CANVAS -->
+    <div id="canvas-container"></div>
+
+    <!-- HOLOGRAPHIC LABELS (For the Scales) -->
+    <div id="label-yes" class="holo-label label-yes">YES /// 62%</div>
+    <div id="label-no" class="holo-label label-no">NO /// 38%</div>
+
+    <!-- UI CONTENT -->
+    <div class="main-wrapper">
+        
+        <nav>
+            <div class="brand">ODDBALL.</div>
+            <a href="#" class="nav-btn">Launch App -></a>
+        </nav>
+
+        <!-- SECTION 1: HERO -->
+        <section class="section-hero">
+            <div class="hero-content">
+                <h1 class="hero-title">MONETIZE<br>THE CHAOS</h1>
+                <div class="hero-tag-wrapper">
+                    <div class="hero-tag">/// PREDICTION PROTOCOL</div>
+                    <div class="hero-sub">Leveraging optimistic oracles to resolve markets for the terminally online.</div>
+                </div>
+            </div>
+            <!-- 3D Scales will render here (on the right) via JS -->
+        </section>
+
+        <!-- SECTION 2: TICKER -->
+        <section class="section-ticker">
+            <div class="ticker-content">
+                ELON MARS COLONY 2029? (NO 99%) • AI SENTIENCE Q4? (YES 12%) • BTC 100K? (YES 45%) • TIKTOK BAN? (NO 60%) • ALIEN DISCLOSURE? (YES 5%) •
+            </div>
+        </section>
+
+        <!-- SECTION 3: MANIFESTO -->
+        <section class="section-manifesto">
+            <div class="manifesto-text">
+                Wall Street is too slow. The timeline moves at the speed of light. 
+                We built a <span class="highlight">Hyper-Liquid</span> protocol to bet on the 
+                weirdest, dumbest, and most important events in human history.
+                <br><br>
+                Don't just watch the glitch. <span style="color: var(--acid); font-style: italic;">Short it.</span>
+            </div>
+        </section>
+
+        <!-- SECTION 4: TIKTOK FEED -->
+        <section class="section-demo">
+            <div class="demo-container">
+                <div class="demo-copy">
+                    <h2>The Infinite<br>Scroll.</h2>
+                    <p>We replaced the spreadsheet with a dopamine loop. Swipe through live markets generated by the community. Spot a mispricing? Bet instantly with one tap.</p>
+                    <a href="#" class="nav-btn" style="background: var(--text); color: var(--void);">Try the Beta</a>
+                </div>
+                
+                <div class="phone-mockup">
+                    <div class="feed-track">
+                        <!-- Card 1 -->
+                        <div class="feed-card">
+                            <div class="card-bg"></div>
+                            <div class="bet-tag">POLITICS</div>
+                            <h3 class="bet-q">Will the US Government confirm NHI contact in 2025?</h3>
+                            <div class="bet-btns">
+                                <div class="btn-vote green">YES $0.12</div>
+                                <div class="btn-vote">NO $0.88</div>
+                            </div>
+                        </div>
+                         <!-- Card 2 -->
+                         <div class="feed-card">
+                            <div class="card-bg"></div>
+                            <div class="bet-tag">TECH</div>
+                            <h3 class="bet-q">Will OpenAI announce AGI before GTA VI releases?</h3>
+                            <div class="bet-btns">
+                                <div class="btn-vote">YES $0.40</div>
+                                <div class="btn-vote green">NO $0.60</div>
+                            </div>
+                        </div>
+                         <!-- Card 3 -->
+                         <div class="feed-card">
+                            <div class="card-bg"></div>
+                            <div class="bet-tag">CULTURE</div>
+                            <h3 class="bet-q">Will a Dogecoin literal dog become Mayor?</h3>
+                            <div class="bet-btns">
+                                <div class="btn-vote green">YES $0.01</div>
+                                <div class="btn-vote">NO $0.99</div>
+                            </div>
+                        </div>
+                         <!-- Loop Clone -->
+                         <div class="feed-card">
+                            <div class="card-bg"></div>
+                            <div class="bet-tag">POLITICS</div>
+                            <h3 class="bet-q">Will the US Government confirm NHI contact in 2025?</h3>
+                            <div class="bet-btns">
+                                <div class="btn-vote green">YES $0.12</div>
+                                <div class="btn-vote">NO $0.88</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: HALL OF FLESH -->
+        <section class="section-leaderboard">
+            <span class="lb-header">/// HALL OF FLESH (TOP TRADERS)</span>
+            <div class="lb-grid">
+                <div class="player-card">
+                    <div class="avatar av-1"></div>
+                    <div class="player-stats">
+                        <h4>@DeepF**kValue</h4>
+                        <div class="profit">+$142,000</div>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <div class="avatar av-2"></div>
+                    <div class="player-stats">
+                        <h4>@Satoshi_Nakamoto</h4>
+                        <div class="profit">+$89,400</div>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <div class="avatar av-3"></div>
+                    <div class="player-stats">
+                        <h4>@Oracle_Eye</h4>
+                        <div class="profit">+$12,050</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: FOOTER -->
+        <footer>
+            <div class="footer-brand">ODDBALL</div>
+            <div style="margin-top: 2rem; font-family: var(--font-code); color: #666;">
+                (C) 2025 THE PREDICTION PROTOCOL
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- THREE.JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- MAIN 3D SCRIPT -->
+    <script>
+        const container = document.getElementById('canvas-container');
+        const labelYes = document.getElementById('label-yes');
+        const labelNo = document.getElementById('label-no');
+
+        // --- 1. SCENE SETUP ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false }); // Antialias OFF for dither look
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio > 2 ? 2 : window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // --- 2. DITHER SHADER LOGIC ---
+        const ditherVertex = `
+            varying vec3 vNormal;
+            void main() {
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const ditherFragment = `
+            uniform vec3 uColor;
+            varying vec3 vNormal;
+
+            // Bayer Matrix 4x4
+            float find_closest(int x, int y, float v) {
+                int index = x + y * 4;
+                float limit = 0.0;
+                if (index == 0) limit = 0.0625;
+                if (index == 1) limit = 0.5625;
+                if (index == 2) limit = 0.1875;
+                if (index == 3) limit = 0.6875;
+                if (index == 4) limit = 0.8125;
+                if (index == 5) limit = 0.3125;
+                if (index == 6) limit = 0.9375;
+                if (index == 7) limit = 0.4375;
+                if (index == 8) limit = 0.25;
+                if (index == 9) limit = 0.75;
+                if (index == 10) limit = 0.125;
+                if (index == 11) limit = 0.625;
+                if (index == 12) limit = 1.0;
+                if (index == 13) limit = 0.5;
+                if (index == 14) limit = 0.875;
+                if (index == 15) limit = 0.375;
+                return v < limit ? 0.0 : 1.0;
+            }
+
+            void main() {
+                vec3 lightDir = normalize(vec3(0.5, 1.0, 1.0));
+                float d = dot(vNormal, lightDir) * 0.6 + 0.4; 
+                int x = int(mod(gl_FragCoord.x, 4.0));
+                int y = int(mod(gl_FragCoord.y, 4.0));
+                float final = find_closest(x, y, d);
+                if (final < 0.5) discard;
+                gl_FragColor = vec4(uColor, 1.0);
+            }
+        `;
+
+        function createDitherMat(colorHex) {
+            return new THREE.ShaderMaterial({
+                uniforms: { uColor: { value: new THREE.Color(colorHex) } },
+                vertexShader: ditherVertex,
+                fragmentShader: ditherFragment,
+                side: THREE.DoubleSide
+            });
+        }
+
+        const matMetal = createDitherMat(0xEAEAEA); // Tungsten White
+        const matAcid = createDitherMat(0xD4FF00);  // Acid Green
+        const matYes = createDitherMat(0x00F0FF);   // Cyan
+        const matNo = createDitherMat(0xFF0055);    // Magenta
+
+        // --- 3. BUILD THE HERO SCALES ---
+        const scaleGroup = new THREE.Group();
+
+        // Pivot
+        const pivot = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), matMetal);
+        scaleGroup.add(pivot);
+
+        // Arm
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 0.3), matMetal);
+        scaleGroup.add(arm);
+
+        // Bowl Builder
+        function buildBowl(material) {
+            const group = new THREE.Group();
+            // Strings
+            const sGeo = new THREE.CylinderGeometry(0.03, 0.03, 5, 4);
+            const s1 = new THREE.Mesh(sGeo, matMetal);
+            s1.position.set(-1.5, 2.5, 0); s1.rotation.z = -0.3;
+            const s2 = new THREE.Mesh(sGeo, matMetal);
+            s2.position.set(1.5, 2.5, 0); s2.rotation.z = 0.3;
+            group.add(s1); group.add(s2);
+            // Bowl
+            const bGeo = new THREE.SphereGeometry(2.5, 16, 8, 0, Math.PI*2, 0, Math.PI*0.5);
+            const bowl = new THREE.Mesh(bGeo, matMetal); 
+            bowl.rotation.x = Math.PI;
+            // Liquid
+            const liquid = new THREE.Mesh(bGeo, material);
+            liquid.scale.set(0.9, 0.9, 0.9);
+            liquid.rotation.x = Math.PI;
+            group.add(bowl);
+            group.add(liquid);
+            return group;
+        }
+
+        // YES Bowl (Left)
+        const leftBowl = buildBowl(matYes);
+        const leftAnchor = new THREE.Group();
+        leftAnchor.position.set(-7, 0, 0);
+        leftAnchor.add(leftBowl);
+        leftBowl.position.y = -5;
+
+        // NO Bowl (Right)
+        const rightBowl = buildBowl(matNo);
+        const rightAnchor = new THREE.Group();
+        rightAnchor.position.set(7, 0, 0);
+        rightAnchor.add(rightBowl);
+        rightBowl.position.y = -5;
+
+        scaleGroup.add(leftAnchor);
+        scaleGroup.add(rightAnchor);
+        scene.add(scaleGroup);
+
+        // --- 4. BUILD BACKGROUND DECOR (To keep scroll interesting) ---
+        // Footer Ring
+        const ringGeo = new THREE.TorusGeometry(18, 0.5, 16, 100);
+        const meshRing = new THREE.Mesh(ringGeo, matAcid);
+        meshRing.position.set(0, -65, -10);
+        meshRing.rotation.x = Math.PI / 2;
+        scene.add(meshRing);
+
+        // Floating Shapes
+        const icoGeo = new THREE.IcosahedronGeometry(4, 0);
+        const meshIco1 = new THREE.Mesh(icoGeo, matMetal);
+        meshIco1.position.set(15, -30, -10);
+        scene.add(meshIco1);
+        
+        const meshIco2 = new THREE.Mesh(icoGeo, matMetal);
+        meshIco2.position.set(-18, -45, -5);
+        scene.add(meshIco2);
+
+
+        // --- 5. POSITIONING & RESPONSIVENESS ---
+        camera.position.z = 25;
+
+        function setHeroPos() {
+            if(window.innerWidth > 900) {
+                // Desktop: Position to the right of the text
+                scaleGroup.position.set(10, 0, 0);
+            } else {
+                // Mobile: Center
+                scaleGroup.position.set(0, -4, -5);
+            }
+        }
+        setHeroPos();
+
+        // --- 6. ANIMATION LOOP ---
+        let time = 0;
+        const baseTilt = 0.25;
+
+        function updateLabel(el, obj, offset) {
+            const v = new THREE.Vector3();
+            obj.getWorldPosition(v);
+            v.y += offset;
+            v.project(camera);
+            
+            // Check if behind camera
+            if(v.z > 1) {
+                el.style.opacity = 0;
+                return;
+            }
+
+            const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(v.y * 0.5) + 0.5) * window.innerHeight;
+
+            el.style.opacity = 1;
+            el.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.015;
+
+            // 1. Animate Scales
+            // Float
+            scaleGroup.position.y = (window.innerWidth > 900 ? 0 : -4) + Math.sin(time * 0.5) * 0.5;
+            
+            // Wobble/Tilt
+            const wobble = Math.sin(time) * 0.05;
+            scaleGroup.rotation.z = baseTilt + wobble;
+            
+            // Correct Bowl Rotation
+            leftAnchor.rotation.z = -(baseTilt + wobble);
+            rightAnchor.rotation.z = -(baseTilt + wobble);
+            
+            // Gentle spin
+            scaleGroup.rotation.y = Math.sin(time * 0.2) * 0.1;
+
+            // 2. Animate Background Elements
+            meshRing.rotation.z += 0.002;
+            meshIco1.rotation.x -= 0.01;
+            meshIco1.rotation.y -= 0.01;
+
+            // 3. Scroll Parallax
+            const scrollY = window.scrollY;
+            camera.position.y = -scrollY * 0.035;
+
+            renderer.render(scene, camera);
+
+            // 4. Update Labels
+            updateLabel(labelYes, leftBowl, -3.5);
+            updateLabel(labelNo, rightBowl, -3.5);
+        }
+
+        animate();
+
+        // Resize Handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            setHeroPos();
+        });
+
+    </script>
+</body>
+</html>
