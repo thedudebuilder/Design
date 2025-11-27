@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODDBALL | Spaces</title>
+    
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #020202;
+            --panel: #080808;
+            --border: #222;
+            --acid: #D4FF00;
+            --acid-dim: rgba(212, 255, 0, 0.1);
+            --cyan: #00F0FF;
+            --magenta: #FF0055;
+            --text-main: #EAEAEA;
+            --text-muted: #888;
+            
+            --font-serif: 'Instrument Serif', serif;
+            --font-mono: 'Space Mono', monospace;
+            --font-ui: 'Inter', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            
+            /* DARK TECHNICAL GRID */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* --- 1. NAVBAR --- */
+        .navbar {
+            height: 60px; flex-shrink: 0;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 30px; border-bottom: 1px solid var(--border);
+            background: rgba(2,2,2,0.95); z-index: 1000;
+        }
+        .brand { font-family: var(--font-serif); font-size: 1.5rem; font-style: italic; letter-spacing: -1px; }
+        .nav-center { display: flex; gap: 30px; }
+        .nav-link { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); cursor: pointer; text-transform: uppercase; text-decoration: none; }
+        .nav-link:hover { color: #fff; }
+        .nav-link.active { color: var(--acid); font-weight: 700; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .balance { font-family: var(--font-mono); font-size: 12px; color: var(--acid); }
+        .avatar-circle { width: 30px; height: 30px; background: #222; border-radius: 50%; border: 1px solid var(--border); }
+
+        /* --- 2. MAIN LAYOUT GRID --- */
+        .app-body {
+            flex: 1;
+            display: grid;
+            /* Sidebar (220px) | GAP (1fr) | Modal (Auto) | GAP (1fr) */
+            /* But easier to do: Sidebar | Main Content Area */
+            grid-template-columns: 220px 1fr;
+            height: 100%;
+        }
+
+        /* --- LEFT COLUMN: TOPICS --- */
+        .sidebar-left {
+            background: rgba(5,5,5,0.8);
+            backdrop-filter: blur(5px);
+            border-right: 1px solid var(--border);
+            padding: 30px 20px;
+            display: flex; flex-direction: column;
+            z-index: 50;
+        }
+
+        .filter-group { margin-bottom: 30px; }
+        .group-title { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .cat-btn {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; margin-bottom: 5px;
+            border-radius: 6px; cursor: pointer;
+            font-family: var(--font-ui); font-size: 13px; color: #888;
+            transition: 0.2s; border: 1px solid transparent;
+        }
+        .cat-btn:hover { background: #111; color: #fff; border-color: #333; }
+        .cat-btn.active { background: var(--acid); color: #000; border-color: var(--acid); font-weight: 700; }
+        .cat-icon { width: 16px; text-align: center; }
+
+        /* --- RIGHT AREA: THE VOID & MODAL --- */
+        .main-stage {
+            position: relative;
+            display: flex;
+            align-items: center; /* Vertically Center */
+            justify-content: center; /* Horizontally Center */
+            overflow: hidden;
+        }
+
+        /* THEATER MODAL (Floating in the void) */
+        .theater-modal {
+            width: 1000px; /* Fixed width to ensure gaps on sides */
+            max-width: 80%; /* Shrink on small screens */
+            height: 80vh; max-height: 800px;
+            
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            
+            /* The Shadow creates depth from the grid */
+            box-shadow: 0 0 0 1px #000, 0 20px 80px rgba(0,0,0,1);
+            
+            display: grid;
+            grid-template-columns: 1fr 340px; /* Feed | Comments */
+            position: relative; z-index: 10;
+            overflow: hidden;
+        }
+
+        /* LEFT SIDE OF MODAL: FEED */
+        .feed-view {
+            position: relative;
+            background: #000;
+            border-right: 1px solid var(--border);
+            height: 100%; overflow: hidden;
+        }
+        .feed-scroller {
+            height: 100%; width: 100%; overflow-y: scroll; 
+            scroll-snap-type: y mandatory; scroll-behavior: smooth;
+            scrollbar-width: none;
+        }
+        .feed-scroller::-webkit-scrollbar { display: none; }
+
+        .market-slide {
+            height: 100%; width: 100%;
+            scroll-snap-align: start;
+            position: relative;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            padding: 40px;
+            border-bottom: 1px solid #111;
+        }
+
+        /* Visuals */
+        .slide-bg {
+            position: absolute; inset: 0; z-index: 0;
+            object-fit: cover; width: 100%; height: 100%;
+            opacity: 0.4; transition: transform 0.5s;
+        }
+        .market-slide:hover .slide-bg { transform: scale(1.02); opacity: 0.5; }
+        .gradient {
+            position: absolute; inset: 0; z-index: 1;
+            background: linear-gradient(to top, #000 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0.2) 100%);
+        }
+
+        /* Content Layer */
+        .slide-content { position: relative; z-index: 10; width: 100%; }
+        
+        .market-tag {
+            font-family: var(--font-mono); font-size: 10px; color: #888;
+            text-transform: uppercase; border: 1px solid #333; padding: 4px 8px;
+            border-radius: 4px; display: inline-block; margin-bottom: 15px; background: rgba(0,0,0,0.5);
+        }
+
+        .question {
+            font-family: var(--font-serif); font-size: 3.5rem; line-height: 0.95; color: #fff;
+            margin-bottom: 25px; max-width: 90%;
+        }
+
+        .stats-grid { display: flex; gap: 30px; margin-bottom: 30px; align-items: flex-end; }
+        .s-item label { font-family: var(--font-mono); font-size: 9px; color: #666; display: block; margin-bottom: 4px; text-transform: uppercase; }
+        .s-item .val { font-family: var(--font-mono); font-size: 12px; color: #ddd; }
+        
+        .big-odds {
+            font-family: var(--font-serif); font-size: 4rem; line-height: 0.8; color: var(--acid);
+            font-style: italic; letter-spacing: -2px;
+        }
+
+        .action-row { display: flex; gap: 10px; width: 100%; }
+        .bet-btn {
+            flex: 1; height: 50px; border: 1px solid #333;
+            background: #111; color: #fff;
+            font-family: var(--font-mono); font-size: 1.2rem;
+            display: flex; justify-content: space-between; align-items: center; padding: 0 20px;
+            cursor: pointer; transition: 0.2s; border-radius: 4px;
+        }
+        .bet-btn span { font-size: 11px; opacity: 0.5; }
+        .bet-btn.yes:hover { background: var(--acid); color: #000; border-color: var(--acid); }
+        .bet-btn.no:hover { background: var(--magenta); color: #fff; border-color: var(--magenta); }
+
+        /* Social Sidebar (Inside Modal) */
+        .inner-socials {
+            position: absolute; right: 20px; bottom: 40px; z-index: 20;
+            display: flex; flex-direction: column; gap: 15px; align-items: center;
+        }
+        .is-btn {
+            width: 40px; height: 40px; border-radius: 50%; background: #111;
+            border: 1px solid #333; display: grid; place-items: center;
+            color: #888; cursor: pointer; transition: 0.2s; font-size: 14px;
+        }
+        .is-btn:hover { border-color: var(--acid); color: var(--acid); transform: scale(1.1); }
+        .is-label { font-family: var(--font-mono); font-size: 9px; margin-top: 4px; opacity: 0.6; }
+
+        /* --- RIGHT SIDE OF MODAL: CHAT --- */
+        .chat-column { background: #0c0c0c; display: flex; flex-direction: column; height: 100%; }
+        .chat-header {
+            height: 50px; border-bottom: 1px solid #222;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+        }
+        .chat-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #666; }
+        .live-badge { font-family: var(--font-mono); font-size: 9px; color: var(--acid); display: flex; align-items: center; gap: 6px; }
+        .dot { width: 6px; height: 6px; background: var(--acid); border-radius: 50%; animation: pulse 1s infinite; }
+
+        .chat-feed { flex: 1; overflow-y: auto; padding: 20px; }
+        .chat-feed::-webkit-scrollbar { width: 4px; }
+        .chat-feed::-webkit-scrollbar-thumb { background: #333; }
+
+        .msg-row { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed #222; }
+        .msg-top { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; }
+        .msg-user { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--cyan); }
+        .msg-side { font-family: var(--font-mono); font-size: 9px; background: #222; padding: 2px 4px; border-radius: 2px; color: #888; }
+        .msg-content { font-size: 13px; line-height: 1.4; color: #ccc; }
+        .msg-meta { margin-top: 8px; font-size: 10px; color: #444; font-family: var(--font-mono); display: flex; gap: 10px; }
+        .msg-meta span:hover { color: var(--acid); cursor: pointer; }
+
+        .chat-input { padding: 15px; border-top: 1px solid #222; background: #0c0c0c; }
+        .inp-field {
+            width: 100%; background: #000; border: 1px solid #333; color: #fff;
+            padding: 10px 12px; border-radius: 4px; font-family: var(--font-ui); font-size: 12px; outline: none;
+        }
+        .inp-field:focus { border-color: var(--acid); }
+        .inp-btn {
+            background: var(--text-main); color: #000; border: none; padding: 6px 12px; margin-left: 5px;
+            font-family: var(--font-mono); font-weight: 700; font-size: 10px; cursor: pointer; border-radius: 2px;
+        }
+
+        /* --- EXTERNAL NAV ARROWS (In the Void) --- */
+        .arrow-container {
+            position: absolute; right: 40px; /* In the right gap */
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .nav-arrow {
+            width: 44px; height: 44px; background: #000; border: 1px solid #333;
+            border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+            color: #666; transition: 0.2s;
+        }
+        .nav-arrow:hover { border-color: var(--acid); color: var(--acid); transform: scale(1.1); }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+    </style>
+</head>
+<body>
+
+    <!-- 1. TOP NAVBAR -->
+    <nav class="navbar">
+        <div class="brand">ODDBALL.</div>
+        <div class="nav-center">
+            <a href="#" class="nav-link active">Feed</a>
+            <a href="#" class="nav-link">Markets</a>
+            <a href="#" class="nav-link">Leaderboard</a>
+        </div>
+        <div class="nav-right">
+            <span class="balance">$420.00</span>
+            <div class="avatar-circle"></div>
+        </div>
+    </nav>
+
+    <div class="app-body">
+        
+        <!-- 2. LEFT SIDEBAR (Topics) -->
+        <aside class="sidebar-left">
+            <div class="filter-group">
+                <div class="cat-btn active">
+                    <span class="cat-icon">🔥</span> Trending
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">🇺🇸</span> US Politics
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">👾</span> Crypto
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">👽</span> Aliens
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">🥊</span> Influencer Boxing
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">🤖</span> AI Safety
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">🎬</span> Pop Culture
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">🌍</span> Global Conflict
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">🧪</span> Science
+                </div>
+                <div class="cat-btn">
+                    <span class="cat-icon">🌧️</span> Climate
+                </div>
+            </div>
+        </aside>
+
+        <!-- 3. MAIN STAGE (The Void + Modal) -->
+        <main class="main-stage">
+            
+            <!-- THE MODAL -->
+            <div class="theater-modal">
+                
+                <!-- FEED SECTION -->
+                <div class="feed-view">
+                    <div class="feed-scroller" id="feedScroller">
+                        
+                        <!-- MARKET 1 -->
+                        <section class="market-slide">
+                            <img src="https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=2555&auto=format&fit=crop" class="slide-bg" style="filter: hue-rotate(20deg);">
+                            <div class="gradient"></div>
+
+                            <div class="slide-content">
+                                <span class="market-tag">GENERAL</span>
+                                <h1 class="question">MegaEth still relevant in 3 months or everybody moved on?</h1>
+                                
+                                <div class="stats-grid">
+                                    <div class="s-item">
+                                        <label>Current Odds</label>
+                                        <div class="big-odds">54%</div>
+                                    </div>
+                                    <div class="s-item">
+                                        <label>Volume</label>
+                                        <div class="val">$100</div>
+                                    </div>
+                                    <div class="s-item">
+                                        <label>Ends</label>
+                                        <div class="val">Mar 2026</div>
+                                    </div>
+                                </div>
+
+                                <div class="action-row">
+                                    <button class="bet-btn yes">YES <span>54¢</span></button>
+                                    <button class="bet-btn no">NO <span>46¢</span></button>
+                                </div>
+                            </div>
+
+                            <!-- Internal Socials -->
+                            <div class="inner-socials">
+                                <div><div class="is-btn">♥</div><div class="is-label">0</div></div>
+                                <div><div class="is-btn">💬</div><div class="is-label">0</div></div>
+                                <div><div class="is-btn">↗</div><div class="is-label">Share</div></div>
+                                <div><div class="is-btn" style="border-color:var(--acid); color:var(--acid);">i</div></div>
+                            </div>
+                        </section>
+
+                        <!-- MARKET 2 -->
+                        <section class="market-slide">
+                            <img src="https://images.unsplash.com/photo-1534269222346-5a896154c41d?q=80&w=2070&auto=format&fit=crop" class="slide-bg">
+                            <div class="gradient"></div>
+                            <div class="slide-content">
+                                <span class="market-tag">SPACE</span>
+                                <h1 class="question">Is Trump going to find aliens?</h1>
+                                <div class="stats-grid">
+                                    <div class="s-item"><label>Odds</label><div class="big-odds" style="color:#fff">12%</div></div>
+                                    <div class="s-item"><label>Volume</label><div class="val">$30M</div></div>
+                                </div>
+                                <div class="action-row">
+                                    <button class="bet-btn yes">YES <span>12¢</span></button>
+                                    <button class="bet-btn no">NO <span>88¢</span></button>
+                                </div>
+                            </div>
+                        </section>
+
+                    </div>
+                </div>
+
+                <!-- CHAT SECTION -->
+                <div class="chat-column">
+                    <div class="chat-header">
+                        <span class="chat-title">Discussion</span>
+                        <div class="live-badge"><div class="dot"></div> Live</div>
+                    </div>
+                    
+                    <div class="chat-feed">
+                        <div class="msg-row">
+                            <div class="msg-top"><span class="msg-user">@Fox_Mulder</span><span class="msg-side">YES</span></div>
+                            <div class="msg-content">The timing of the declassification bill matches. It's happening.</div>
+                            <div class="msg-meta"><span>2m ago</span><span>Reply</span><span>♥ 42</span></div>
+                        </div>
+                        <div class="msg-row">
+                            <div class="msg-top"><span class="msg-user">@Skeptic_AI</span><span class="msg-side">NO</span></div>
+                            <div class="msg-content">Pure distraction. Betting NO at 88 cents is free alpha.</div>
+                            <div class="msg-meta"><span>5m ago</span><span>Reply</span><span>♥ 12</span></div>
+                        </div>
+                        <div class="msg-row">
+                            <div class="msg-top"><span class="msg-user">@Doge_Whale</span></div>
+                            <div class="msg-content">Just aped 50 SOL. If aliens are real, money doesn't matter anyway.</div>
+                            <div class="msg-meta"><span>12m ago</span><span>Reply</span><span>♥ 156</span></div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input">
+                        <div style="display:flex;">
+                            <input type="text" class="inp-field" placeholder="Add a comment...">
+                            <button class="inp-btn">POST</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ARROWS IN RIGHT VOID -->
+            <div class="arrow-container">
+                <div class="nav-arrow" onclick="scrollFeed(-1)">↑</div>
+                <div class="nav-arrow" onclick="scrollFeed(1)">↓</div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const scroller = document.getElementById('feedScroller');
+        function scrollFeed(direction) {
+            const height = scroller.clientHeight;
+            scroller.scrollBy({ top: height * direction, behavior: 'smooth' });
+        }
+    </script>
+
+</body>
+</html>
