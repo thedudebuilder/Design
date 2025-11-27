@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODDBALL | Hall of Flesh</title>
+    
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #050505;
+            --terminal-bg: #0A0A0A;
+            --border: #222;
+            --acid: #D4FF00;
+            --acid-dim: rgba(212, 255, 0, 0.1);
+            --cyan: #00F0FF;
+            --magenta: #FF0055;
+            --text-main: #EAEAEA;
+            --text-muted: #888;
+            
+            --font-serif: 'Instrument Serif', serif;
+            --font-mono: 'Space Mono', monospace;
+            --font-ui: 'Inter', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            height: 100vh;
+            overflow: hidden;
+            
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; border-bottom: 1px solid var(--border);
+            background: rgba(5,5,5,0.95); z-index: 1000;
+        }
+        .brand { font-family: var(--font-serif); font-size: 1.5rem; font-style: italic; letter-spacing: -1px; }
+        .nav-center { display: flex; gap: 30px; }
+        .nav-link { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); cursor: pointer; text-transform: uppercase; text-decoration: none;}
+        .nav-link:hover { color: var(--text-main); }
+        .nav-link.active { color: var(--acid); font-weight: 700; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .balance { font-family: var(--font-mono); font-size: 12px; color: var(--acid); }
+        .avatar-circle { width: 30px; height: 30px; background: #222; border-radius: 50%; border: 1px solid var(--border); }
+
+        /* --- LAYOUT WRAPPER --- */
+        .layout-wrapper {
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; padding-top: 60px; width: 100%;
+        }
+
+        /* --- TERMINAL WINDOW --- */
+        .terminal-window {
+            width: 1200px; max-width: 90vw;
+            height: 85vh; max-height: 900px;
+            background: var(--terminal-bg);
+            border: 1px solid var(--border);
+            box-shadow: 0 0 0 1px #111, 0 30px 80px rgba(0,0,0,0.8);
+            border-radius: 4px;
+            display: flex; flex-direction: column;
+            position: relative; overflow: hidden;
+        }
+
+        /* Header */
+        .terminal-header-bar {
+            height: 40px; border-bottom: 1px solid var(--border); background: #111;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+        }
+        .win-controls { display: flex; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #333; }
+        .win-title { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+
+        /* --- LEADERBOARD CONTENT --- */
+        .lb-layout {
+            display: grid; grid-template-columns: 1fr 300px;
+            height: 100%; overflow: hidden;
+        }
+
+        /* LEFT: MAIN TABLE */
+        .main-col {
+            display: flex; flex-direction: column;
+            border-right: 1px solid var(--border);
+            position: relative;
+        }
+
+        .lb-controls {
+            padding: 20px 30px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: flex-end;
+        }
+        
+        .page-title h1 {
+            font-family: var(--font-serif); font-size: 3rem; line-height: 1; margin-bottom: 5px;
+        }
+        .page-desc { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+        /* TOGGLE SWITCH ($ vs XP) */
+        .mode-toggle {
+            display: flex; background: #000; border: 1px solid var(--border);
+            border-radius: 4px; padding: 4px;
+        }
+        .toggle-btn {
+            padding: 8px 20px; font-family: var(--font-mono); font-size: 11px;
+            cursor: pointer; color: var(--text-muted); border-radius: 2px;
+            transition: 0.2s;
+        }
+        .toggle-btn.active {
+            background: var(--acid); color: #000; font-weight: 700;
+        }
+        
+        /* Time Selectors */
+        .time-filters { display: flex; gap: 5px; margin-left: 20px; }
+        .tf-btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; padding: 6px 12px; cursor: pointer; }
+        .tf-btn.active { border-color: #333; color: #fff; background: #151515; }
+
+        /* TABLE HEADER */
+        .table-header {
+            display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1.5fr 1.5fr;
+            padding: 15px 30px; border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+        }
+
+        /* SCROLLABLE LIST */
+        .table-scroller {
+            flex: 1; overflow-y: auto; padding-bottom: 80px; /* Space for sticky footer */
+        }
+        .table-scroller::-webkit-scrollbar { width: 6px; }
+        .table-scroller::-webkit-scrollbar-thumb { background: #333; }
+
+        .lb-row {
+            display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1.5fr 1.5fr;
+            padding: 15px 30px; border-bottom: 1px solid #111;
+            align-items: center; transition: 0.1s;
+        }
+        .lb-row:hover { background: #0E0E0E; }
+
+        /* Rank Badge */
+        .rank { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+        .rank-top { color: var(--acid); font-weight: 700; }
+        .rank-icon { width: 20px; display: inline-block; text-align: center; }
+
+        /* User Cell */
+        .user-cell { display: flex; align-items: center; gap: 15px; }
+        .u-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #333; }
+        .u-name { font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: #fff; }
+        .u-tag { font-family: var(--font-mono); font-size: 9px; padding: 2px 4px; background: #151515; color: #666; border-radius: 2px; margin-left: 8px; }
+
+        /* Stats */
+        .stat-mono { font-family: var(--font-mono); font-size: 12px; }
+        .val-green { color: var(--acid); text-shadow: 0 0 10px rgba(212,255,0,0.2); }
+        .val-red { color: var(--magenta); }
+        .val-xp { color: var(--cyan); text-shadow: 0 0 10px rgba(0,240,255,0.2); }
+
+        /* Win Rate Bar */
+        .wr-container { display: flex; align-items: center; gap: 10px; }
+        .wr-bar-bg { width: 60px; height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
+        .wr-fill { height: 100%; background: var(--acid); }
+        .wr-text { font-family: var(--font-mono); font-size: 10px; color: #888; }
+
+        /* STICKY FOOTER (YOU) */
+        .sticky-user {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: #111; border-top: 1px solid var(--acid);
+            display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1.5fr 1.5fr;
+            padding: 20px 30px; align-items: center;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .sticky-user .u-name { color: var(--acid); }
+
+        /* --- RIGHT COL: SIDEBAR --- */
+        .sidebar {
+            background: #080808; display: flex; flex-direction: column;
+        }
+        .sb-header {
+            padding: 20px; border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--text-muted);
+        }
+        .sb-list { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .whale-card {
+            background: #0E0E0E; border: 1px solid var(--border); padding: 15px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .wc-header { display: flex; justify-content: space-between; align-items: center; }
+        .wc-user { display: flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 700; }
+        .wc-avatar { width: 24px; height: 24px; border-radius: 50%; background: #222; }
+        .wc-market { font-size: 11px; color: #888; line-height: 1.4; }
+        .wc-profit { font-family: var(--font-mono); font-size: 14px; color: var(--acid); text-align: right; }
+        .wc-roi { font-size: 10px; color: var(--acid-dim); display: block; }
+
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="brand">ODDBALL.</div>
+        <div class="nav-center">
+            <a href="#" class="nav-link">Markets</a>
+            <a href="#" class="nav-link">Feed</a>
+            <a href="#" class="nav-link active">Leaderboard</a>
+        </div>
+        <div class="nav-right">
+            <span class="balance">$30.43</span>
+            <div class="avatar-circle"></div>
+        </div>
+    </nav>
+
+    <div class="layout-wrapper">
+        <div class="terminal-window">
+            
+            <div class="terminal-header-bar">
+                <div class="win-controls"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                <div class="win-title">leaderboard_global.sys</div>
+                <div></div>
+            </div>
+
+            <div class="lb-layout">
+                
+                <!-- MAIN TABLE COLUMN -->
+                <div class="main-col">
+                    
+                    <!-- CONTROLS -->
+                    <div class="lb-controls">
+                        <div>
+                            <div class="page-title"><h1>Hall of Flesh</h1></div>
+                            <span class="page-desc">Top performers by realized profit and reputation.</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center;">
+                            <div class="mode-toggle">
+                                <div class="toggle-btn active" id="btn-pnl">PnL ($)</div>
+                                <div class="toggle-btn" id="btn-xp">XP (Rep)</div>
+                            </div>
+                            <div class="time-filters">
+                                <button class="tf-btn">24H</button>
+                                <button class="tf-btn">7D</button>
+                                <button class="tf-btn active">30D</button>
+                                <button class="tf-btn">ALL</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TABLE HEADER -->
+                    <div class="table-header">
+                        <div>Rank</div>
+                        <div>Trader</div>
+                        <div>Win Rate</div>
+                        <div style="text-align:right">Profit (30d)</div>
+                        <div style="text-align:right">Volume</div>
+                    </div>
+
+                    <!-- SCROLLABLE ROWS -->
+                    <div class="table-scroller">
+                        <!-- 1 -->
+                        <div class="lb-row">
+                            <div class="rank"><span class="rank-top rank-icon">1</span></div>
+                            <div class="user-cell">
+                                <div class="u-avatar" style="background: linear-gradient(45deg, #ff0055, #000);"></div>
+                                <span class="u-name">DeepF**kValue</span>
+                                <span class="u-tag">OG</span>
+                            </div>
+                            <div class="wr-container">
+                                <div class="wr-bar-bg"><div class="wr-fill" style="width: 88%;"></div></div>
+                                <span class="wr-text">88%</span>
+                            </div>
+                            <div class="stat-mono val-green" style="text-align:right">+$3,217,351</div>
+                            <div class="stat-mono" style="text-align:right">$28.3M</div>
+                        </div>
+
+                        <!-- 2 -->
+                        <div class="lb-row">
+                            <div class="rank"><span class="rank-top rank-icon">2</span></div>
+                            <div class="user-cell">
+                                <div class="u-avatar" style="background: linear-gradient(135deg, #ccff00, #000);"></div>
+                                <span class="u-name">Satoshi_Nakamoto</span>
+                            </div>
+                            <div class="wr-container">
+                                <div class="wr-bar-bg"><div class="wr-fill" style="width: 65%;"></div></div>
+                                <span class="wr-text">65%</span>
+                            </div>
+                            <div class="stat-mono val-green" style="text-align:right">+$1,490,654</div>
+                            <div class="stat-mono" style="text-align:right">$8.9M</div>
+                        </div>
+
+                        <!-- 3 -->
+                        <div class="lb-row">
+                            <div class="rank"><span class="rank-top rank-icon">3</span></div>
+                            <div class="user-cell">
+                                <div class="u-avatar" style="background: linear-gradient(90deg, #00f0ff, #000);"></div>
+                                <span class="u-name">Oracle_Eye</span>
+                            </div>
+                            <div class="wr-container">
+                                <div class="wr-bar-bg"><div class="wr-fill" style="width: 92%;"></div></div>
+                                <span class="wr-text">92%</span>
+                            </div>
+                            <div class="stat-mono val-green" style="text-align:right">+$1,424,409</div>
+                            <div class="stat-mono" style="text-align:right">$47.7M</div>
+                        </div>
+
+                        <!-- 4 -->
+                        <div class="lb-row">
+                            <div class="rank"><span class="rank-icon">4</span></div>
+                            <div class="user-cell">
+                                <div class="u-avatar" style="background: #333;"></div>
+                                <span class="u-name">Comeback123</span>
+                            </div>
+                            <div class="wr-container">
+                                <div class="wr-bar-bg"><div class="wr-fill" style="width: 40%;"></div></div>
+                                <span class="wr-text">40%</span>
+                            </div>
+                            <div class="stat-mono val-green" style="text-align:right">+$1,100,200</div>
+                            <div class="stat-mono" style="text-align:right">$14.1M</div>
+                        </div>
+
+                        <!-- 5 -->
+                        <div class="lb-row">
+                            <div class="rank"><span class="rank-icon">5</span></div>
+                            <div class="user-cell">
+                                <div class="u-avatar" style="background: #444;"></div>
+                                <span class="u-name">Gmanas</span>
+                            </div>
+                            <div class="wr-container">
+                                <div class="wr-bar-bg"><div class="wr-fill" style="width: 55%;"></div></div>
+                                <span class="wr-text">55%</span>
+                            </div>
+                            <div class="stat-mono val-green" style="text-align:right">+$980,000</div>
+                            <div class="stat-mono" style="text-align:right">$40.3M</div>
+                        </div>
+                        
+                        <!-- Filler rows to demonstrate scroll -->
+                        <div class="lb-row"><div class="rank"><span class="rank-icon">6</span></div><div class="user-cell"><div class="u-avatar" style="background:#222"></div><span class="u-name">User_001</span></div><div class="wr-container"><div class="wr-bar-bg"><div class="wr-fill" style="width:50%"></div></div><span class="wr-text">50%</span></div><div class="stat-mono val-green" style="text-align:right">+$800k</div><div class="stat-mono" style="text-align:right">$2M</div></div>
+                        <div class="lb-row"><div class="rank"><span class="rank-icon">7</span></div><div class="user-cell"><div class="u-avatar" style="background:#222"></div><span class="u-name">User_002</span></div><div class="wr-container"><div class="wr-bar-bg"><div class="wr-fill" style="width:50%"></div></div><span class="wr-text">50%</span></div><div class="stat-mono val-green" style="text-align:right">+$750k</div><div class="stat-mono" style="text-align:right">$1M</div></div>
+                        <div class="lb-row"><div class="rank"><span class="rank-icon">8</span></div><div class="user-cell"><div class="u-avatar" style="background:#222"></div><span class="u-name">User_003</span></div><div class="wr-container"><div class="wr-bar-bg"><div class="wr-fill" style="width:50%"></div></div><span class="wr-text">50%</span></div><div class="stat-mono val-green" style="text-align:right">+$420k</div><div class="stat-mono" style="text-align:right">$9M</div></div>
+                    </div>
+
+                    <!-- STICKY FOOTER (YOU) -->
+                    <div class="sticky-user">
+                        <div class="rank"><span class="rank-icon">578k</span></div>
+                        <div class="user-cell">
+                            <div class="u-avatar" style="background: var(--acid);"></div>
+                            <span class="u-name">stopitpls (You)</span>
+                        </div>
+                        <div class="wr-container">
+                            <div class="wr-bar-bg"><div class="wr-fill" style="width: 12%;"></div></div>
+                            <span class="wr-text">12%</span>
+                        </div>
+                        <div class="stat-mono val-red" style="text-align:right">-$76.21</div>
+                        <div class="stat-mono" style="text-align:right">$263</div>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT: SIDEBAR -->
+                <div class="sidebar">
+                    <div class="sb-header">Biggest Wins (Nov)</div>
+                    <div class="sb-list">
+                        
+                        <div class="whale-card">
+                            <div class="wc-header">
+                                <div class="wc-user">
+                                    <div class="wc-avatar" style="background: #f0f;"></div>
+                                    <span>wasianverso...</span>
+                                </div>
+                                <div class="wc-profit">+$2.7M</div>
+                            </div>
+                            <div class="wc-market">Cardinals vs. Cowboys</div>
+                        </div>
+
+                        <div class="whale-card">
+                            <div class="wc-header">
+                                <div class="wc-user">
+                                    <div class="wc-avatar" style="background: #0ff;"></div>
+                                    <span>Comeback1...</span>
+                                </div>
+                                <div class="wc-profit">+$1.8M</div>
+                            </div>
+                            <div class="wc-market">Devils vs. Capitals</div>
+                        </div>
+
+                        <div class="whale-card">
+                            <div class="wc-header">
+                                <div class="wc-user">
+                                    <div class="wc-avatar" style="background: #ff0;"></div>
+                                    <span>fengdubiy...</span>
+                                </div>
+                                <div class="wc-profit">+$2.5M</div>
+                            </div>
+                            <div class="wc-market">LoL: T1 vs KT Rolster</div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple Toggle Logic
+        const btnPnL = document.getElementById('btn-pnl');
+        const btnXP = document.getElementById('btn-xp');
+        const profitCells = document.querySelectorAll('.val-green');
+
+        btnXP.addEventListener('click', () => {
+            btnXP.classList.add('active');
+            btnPnL.classList.remove('active');
+            // Mock change to XP
+            profitCells.forEach(cell => {
+                cell.classList.remove('val-green');
+                cell.classList.add('val-xp');
+                cell.innerText = cell.innerText.replace('+$', '').replace('k', '000') + " XP";
+            });
+        });
+
+        btnPnL.addEventListener('click', () => {
+            btnPnL.classList.add('active');
+            btnXP.classList.remove('active');
+            // Mock change back
+            profitCells.forEach(cell => {
+                cell.classList.add('val-green');
+                cell.classList.remove('val-xp');
+                cell.innerText = "+$" + cell.innerText.replace(' XP', '').substring(0,3) + "k";
+            });
+        });
+    </script>
+
+</body>
+</html>
